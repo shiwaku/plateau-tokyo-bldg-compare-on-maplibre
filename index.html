@@ -1,0 +1,217 @@
+<html>
+
+<head>
+  <title>3D都市モデル建築物モデルLOD1と都市計画基礎調査（建物利用現況）の比較</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel='stylesheet' />
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@2.11.0/dist/index.js"></script>
+  <link href="maplibre-gl-compare.css" rel='stylesheet' />
+  <script src="maplibre-gl-compare.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <style>
+    body {
+      overflow: hidden;
+    }
+
+    body * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+  <div id="comparison-container">
+    <div id="before" class="map"></div>
+    <div id="after" class="map"></div>
+  </div>
+  <script type="text/javascript">
+    // Protocolの設定
+    let protocol = new pmtiles.Protocol();
+    maplibregl.addProtocol('pmtiles', (request) => {
+      return new Promise((resolve, reject) => {
+        const callback = (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ data });
+          }
+        };
+        protocol.tile(request, callback);
+      });
+    });
+
+    // マップの初期化
+    const beforeMap = new maplibregl.Map({
+      container: 'before',
+      style: 'dark.json',
+      zoom: 14.5,
+      center: [139.6891424, 35.6896068],
+      pitch: 65,
+      bearing: 0,
+      maxPitch: 85,
+      attributionControl: false,
+      hash: true
+    })
+
+    // スケール表示
+    beforeMap.addControl(new maplibregl.ScaleControl({
+      maxWidth: 200,
+      unit: 'metric'
+    }));
+
+    // Attributionを折りたたみ表示
+    beforeMap.addControl(new maplibregl.AttributionControl({
+      compact: true
+    }));
+
+    // マップの初期化
+    beforeMap.on('load', () => {
+      // PLATEAU建築物モデル（PMTiles）ソース
+      beforeMap.addSource("plateau-bldg", {
+        type: "vector",
+        url: "pmtiles://https://pmtiles-data.s3.ap-northeast-1.amazonaws.com/plateau/PLATEAU_2023_LOD0.pmtiles",
+        minzoom: 14,
+        maxzoom: 16,
+        attribution: '<a href="https://www.geospatial.jp/ckan/dataset/plateau">3D都市モデルPLATEAU建築物モデル（国土交通省）</a>'
+      });
+
+      // PLATEAU建築物モデル（PMTiles）レイヤ
+      beforeMap.addLayer({
+        "id": "plateau-bldg",
+        "source": "plateau-bldg",
+        "source-layer": "PLATEAU_2023_LOD0",
+        "minzoom": 14,
+        "maxzoom": 23,
+        "type": "fill-extrusion",
+        "paint": {
+          "fill-extrusion-color": "#00BEBE",
+          "fill-extrusion-opacity": 0.6,
+          "fill-extrusion-height": ["get", "measured_height"]
+        }
+      });
+
+      // Skyレイヤ
+      beforeMap.setSky({
+        "sky-color": "#199EF3",
+        "sky-horizon-blend": 0.7,
+        "horizon-color": "#f0f8ff",
+        "horizon-fog-blend": 0.8,
+        "fog-color": "#2c7fb8",
+        "fog-ground-blend": 0.9,
+        "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 12, 0]
+      });
+
+    })
+
+    // マップの初期化
+    const afterMap = new maplibregl.Map({
+      container: 'after',
+      style: 'dark.json',
+      zoom: 14.5,
+      center: [139.6891424, 35.6896068],
+      pitch: 65,
+      bearing: 0,
+      maxPitch: 85,
+      attributionControl: false,
+      hash: true
+    })
+
+    // ズーム・回転
+    afterMap.addControl(new maplibregl.NavigationControl());
+
+    // フルスクリーンモードのオンオフ
+    afterMap.addControl(new maplibregl.FullscreenControl());
+
+    // 現在位置表示
+    afterMap.addControl(new maplibregl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: false
+      },
+      fitBoundsOptions: { maxZoom: 18 },
+      trackUserLocation: true,
+      showUserLocation: true
+    }));
+
+    // スケール表示
+    afterMap.addControl(new maplibregl.ScaleControl({
+      maxWidth: 200,
+      unit: 'metric'
+    }));
+
+    // Attributionを折りたたみ表示
+    afterMap.addControl(new maplibregl.AttributionControl({
+      compact: true
+    }));
+
+    afterMap.on('load', () => {
+      // 区部建物現況（PMTiles）ソース
+      afterMap.addSource("kubu-building", {
+        type: "vector",
+        url: "pmtiles://https://pmtiles-data.s3.ap-northeast-1.amazonaws.com/tokyo/R03Building_16.pmtiles",
+        minzoom: 14,
+        maxzoom: 16,
+        attribution: '<a href="https://catalog.data.metro.tokyo.lg.jp/dataset/t000008d2000000019">東京都 土地利用現況調査GISデータ</a>'
+      });
+
+      // 区部建物現況（PMTiles）レイヤ
+      afterMap.addLayer({
+        'id': 'kubu-building',
+        'source': 'kubu-building',
+        'source-layer': "R03Building",
+        "minzoom": 14,
+        "maxzoom": 23,
+        'type': 'fill-extrusion',
+        'paint': {
+          "fill-extrusion-color": '#399C42',
+          "fill-extrusion-opacity": 0.6,
+          // "fill-extrusion-height": ["get", "BV_15"],
+          "fill-extrusion-height": ["get", "BV_16"]
+        },
+      });
+
+      // Skyレイヤ
+      afterMap.setSky({
+        "sky-color": "#199EF3",
+        "sky-horizon-blend": 0.7,
+        "horizon-color": "#f0f8ff",
+        "horizon-fog-blend": 0.8,
+        "fog-color": "#2c7fb8",
+        "fog-ground-blend": 0.9,
+        "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 12, 0]
+      });
+
+    })
+
+    var container = "#comparison-container";
+    var map = new maplibregl.Compare(beforeMap, afterMap, container, {
+
+    });
+  </script>
+</body>
+
+</html>
